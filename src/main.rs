@@ -33,21 +33,27 @@ fn main() {
         process::exit(3);
     });
 
-    let mut stmt = conn.prepare("SELECT word FROM words").unwrap_or_else(|e| {
+    let mut stmt = conn
+        .prepare("SELECT word, canonical_form FROM word")
+        .unwrap_or_else(|e| {
         eprintln!("Failed to prepare query: {}", e);
         process::exit(4);
     });
 
     let rows = stmt
-        .query_map([], |row| row.get::<_, String>(0))
+        .query_map([], |row| {
+            // column 0 -> word, column 1 -> canonical_form
+            let word = row.get::<_, String>(0)?;
+            let canonical = row.get::<_, String>(1)?;
+            Ok((word, canonical))
+        })
         .unwrap_or_else(|e| {
             eprintln!("Query failed: {}", e);
             process::exit(5);
         });
-
     for row in rows {
         match row {
-            Ok(word) if re.is_match(&word) => println!("{}", word),
+            Ok((word, canonical)) if re.is_match(&canonical) => println!("{}", word),
             Ok(_) => {}
             Err(e) => eprintln!("Row read error: {}", e),
         }
